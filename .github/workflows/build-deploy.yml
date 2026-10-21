@@ -31,6 +31,6 @@ jobs:
           server: ${{ secrets.SAKURA_FTP_HOST }}
           username: ${{ secrets.SAKURA_FTP_USER }}
           password: ${{ secrets.SAKURA_FTP_PASSWORD }}
-          protocol: ftps
+          protocol: ftps-legacy
           local-dir: public/
           server-dir: ./mysubsurface/
