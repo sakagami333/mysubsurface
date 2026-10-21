@@ -1,0 +1,35 @@
+name: Build and Deploy
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # 毎日 JST 11:00 にビルド
+  workflow_dispatch:       # 手動実行も可能
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 依存インストール
+        run: pip install -r requirements.txt
+
+      - name: Subsurface Cloud からデータ取得 & HTML 生成
+        env:
+          SUBSURFACE_EMAIL: ${{ secrets.SUBSURFACE_EMAIL }}
+          SUBSURFACE_PASSWORD: ${{ secrets.SUBSURFACE_PASSWORD }}
+        run: python src/build.py
+
+      - name: さくらのサーバへ FTP デプロイ
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.SAKURA_FTP_HOST }}
+          username: ${{ secrets.SAKURA_FTP_USER }}
+          password: ${{ secrets.SAKURA_FTP_PASSWORD }}
+          local-dir: public/
+          server-dir: ./mysubsurface/

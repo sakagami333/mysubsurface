@@ -1,0 +1,14 @@
+# 生成ファイル
+public/
+
+# 認証情報
+.env
+*.credentials
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Subsurface クラウドの一時クローン
+.ssrf-cache/

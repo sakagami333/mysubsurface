@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dive Log</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; background: #f0f4f8; color: #1a2a3a; }
+    h1 { color: #0077b6; border-bottom: 2px solid #0077b6; padding-bottom: 0.5rem; }
+    .stats { background: #0077b6; color: white; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; display: flex; gap: 2rem; }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: bold; }
+    .stat-label { font-size: 0.85rem; opacity: 0.85; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    th { background: #023e8a; color: white; padding: 0.75rem 1rem; text-align: left; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #e0e8f0; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #e8f4f8; }
+    a { color: #0077b6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>My Dive Log</h1>
+  <div class="stats">
+    <div class="stat-item">
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-label">総本数</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>日付</th>
+        <th>場所</th>
+        <th>最大深度</th>
+        <th>潜水時間</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dive in dives %}
+      <tr>
+        <td>{{ total - loop.index0 }}</td>
+        <td><a href="dive-{{ loop.index0 }}.html">{{ dive.date }}</a></td>
+        <td>{{ dive.location or "—" }}</td>
+        <td>{{ "%.1f"|format(dive.max_depth_m) }} m</td>
+        <td>{{ dive.duration }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

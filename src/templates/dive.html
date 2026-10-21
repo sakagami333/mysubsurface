@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ dive.date }} {{ dive.location }}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; background: #f0f4f8; color: #1a2a3a; }
+    h1 { color: #0077b6; }
+    .back { display: inline-block; margin-bottom: 1rem; color: #0077b6; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .info-card { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; }
+    .info-value { font-size: 1.8rem; font-weight: bold; color: #0077b6; }
+    .info-label { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+    .chart-container { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← 一覧に戻る</a>
+  <h1>{{ dive.date }} {{ dive.time }} — {{ dive.location or "場所不明" }}</h1>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-value">{{ "%.1f"|format(dive.max_depth_m) }} m</div>
+      <div class="info-label">最大深度</div>
+    </div>
+    <div class="info-card">
+      <div class="info-value">{{ dive.duration }}</div>
+      <div class="info-label">潜水時間</div>
+    </div>
+  </div>
+
+  {% if dive.samples %}
+  <div class="chart-container">
+    <canvas id="depthChart"></canvas>
+  </div>
+  <script>
+    const raw = {{ samples_json }};
+    const labels = raw.map(s => {
+      const m = Math.floor(s.t / 60);
+      const sec = String(s.t % 60).padStart(2, "0");
+      return `${m}:${sec}`;
+    });
+    const data = raw.map(s => s.d);
+
+    new Chart(document.getElementById("depthChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "深度 (m)",
+          data,
+          borderColor: "#0077b6",
+          backgroundColor: "rgba(0,119,182,0.15)",
+          fill: true,
+          pointRadius: 0,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        scales: {
+          y: { reverse: true, title: { display: true, text: "深度 (m)" } },
+          x: { title: { display: true, text: "経過時間" }, ticks: { maxTicksLimit: 10 } }
+        },
+        plugins: { legend: { display: false } },
+        animation: false,
+      }
+    });
+  </script>
+  {% else %}
+  <p>深度プロファイルデータなし</p>
+  {% endif %}
+</body>
+</html>
