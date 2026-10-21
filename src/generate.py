@@ -21,8 +21,15 @@ def generate(dives: list) -> None:
     # 個別ダイブページ
     detail_tmpl = env.get_template("dive.html")
     for i, dive in enumerate(dives):
-        samples_json = json.dumps(
-            [{"t": s.time_sec, "d": s.depth_m} for s in dive.samples]
-        )
+        def _s(s):
+            d: dict = {"t": s.time_sec, "d": s.depth_m}
+            if s.temp_c is not None:
+                d["c"] = s.temp_c
+            if s.pressure_bar is not None:
+                d["p"] = s.pressure_bar
+            if s.stopdepth_m is not None:
+                d["s"] = s.stopdepth_m
+            return d
+        samples_json = json.dumps([_s(s) for s in dive.samples])
         html = detail_tmpl.render(dive=dive, samples_json=samples_json, dive_id=i)
         (PUBLIC_DIR / f"dive-{i}.html").write_text(html, encoding="utf-8")
