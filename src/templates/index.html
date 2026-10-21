@@ -5,27 +5,110 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Dive Log</title>
   <style>
-    body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; background: #f0f4f8; color: #1a2a3a; }
-    h1 { color: #0077b6; border-bottom: 2px solid #0077b6; padding-bottom: 0.5rem; }
-    .stats { background: #0077b6; color: white; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; display: flex; gap: 2rem; }
-    .stat-item { text-align: center; }
-    .stat-value { font-size: 2rem; font-weight: bold; }
-    .stat-label { font-size: 0.85rem; opacity: 0.85; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    th { background: #023e8a; color: white; padding: 0.75rem 1rem; text-align: left; }
-    td { padding: 0.75rem 1rem; border-bottom: 1px solid #e0e8f0; }
+    :root {
+      --bg:       #eef3fb;
+      --surface:  #ffffff;
+      --surface2: #dce8f7;
+      --border:   #b8d0e8;
+      --accent:   #003f87;
+      --text:     #1a2844;
+      --muted:    #5070a0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      font-size: 0.875rem;
+    }
+    header {
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    .stats {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
+    .stat-item {
+      flex: 1;
+      background: var(--surface);
+      padding: 0.55rem 1rem;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .stat-label {
+      font-size: 0.67rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    thead tr { background: var(--surface2); }
+    th {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.71rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    td {
+      padding: 0.42rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #e8f4f8; }
-    a { color: #0077b6; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    tbody tr:hover td { background: var(--surface2); }
+    .col-num   { color: var(--muted); font-size: 0.8rem; }
+    .col-depth { font-weight: 600; color: var(--accent); }
+    a { color: var(--text); text-decoration: none; }
+    a:hover { color: var(--accent); }
   </style>
 </head>
 <body>
-  <h1>My Dive Log</h1>
+  <header>
+    <h1>My Dive Log</h1>
+  </header>
   <div class="stats">
     <div class="stat-item">
       <div class="stat-value">{{ total }}</div>
       <div class="stat-label">総本数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ "%.0f"|format(dives | map(attribute='max_depth_m') | max) }} m</div>
+      <div class="stat-label">最大深度</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ dives | map(attribute='date') | max }}</div>
+      <div class="stat-label">最終ダイブ</div>
     </div>
   </div>
   <table>
@@ -41,10 +124,10 @@
     <tbody>
       {% for dive in dives %}
       <tr>
-        <td>{{ dive.dive_number or "—" }}</td>
+        <td class="col-num">{{ dive.dive_number or "—" }}</td>
         <td><a href="dive-{{ dive.dive_number or loop.index0 }}.html">{{ dive.date }}</a></td>
         <td>{{ dive.location or "—" }}</td>
-        <td>{{ "%.1f"|format(dive.max_depth_m) }} m</td>
+        <td class="col-depth">{{ "%.1f"|format(dive.max_depth_m) }} m</td>
         <td>{{ dive.duration }}</td>
       </tr>
       {% endfor %}

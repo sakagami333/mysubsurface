@@ -3,30 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ dive.date }} {{ dive.location }}</title>
+  <title>No.{{ dive.dive_number }} {{ dive.location }}</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
-    body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; background: #f0f4f8; color: #1a2a3a; }
-    h1 { color: #0077b6; }
-    .back { display: inline-block; margin-bottom: 1rem; color: #0077b6; text-decoration: none; }
-    .back:hover { text-decoration: underline; }
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.5rem; margin-bottom: 1.5rem; }
-    .info-card { background: white; border-radius: 8px; padding: 0.5rem 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; }
-    .info-card-full { grid-column: 1 / -1; text-align: left; }
-    .info-value { font-size: 1.1rem; font-weight: bold; color: #0077b6; }
-    .info-value svg { width: 1em !important; height: 1em !important; vertical-align: -0.15em; margin-right: 2px; }
-    .info-label { font-size: 0.7rem; color: #666; margin-top: 0.15rem; }
-    .chart-wrap { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .chart-main { }
-    .chart-temp { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #e0e8f0; height: 72px; }
+    :root {
+      --bg:       #eef3fb;
+      --surface:  #ffffff;
+      --surface2: #dce8f7;
+      --border:   #b8d0e8;
+      --accent:   #003f87;
+      --text:     #1a2844;
+      --muted:    #5070a0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      font-size: 0.875rem;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.75rem;
+    }
+    .back {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .back:hover { color: var(--accent); }
+    .back svg { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: 0.2em; }
+    .dive-no {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .info-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      text-align: center;
+      min-width: 88px;
+    }
+    .info-card-full {
+      flex: 1 1 100%;
+      text-align: left;
+    }
+    .info-value {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .info-value svg {
+      width: 1em !important;
+      height: 1em !important;
+      vertical-align: -0.15em;
+      margin-right: 2px;
+    }
+    .info-label {
+      font-size: 0.67rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .chart-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .chart-temp {
+      margin-top: 0.45rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border);
+      height: 72px;
+    }
   </style>
 </head>
 <body>
-  <a class="back" href="index.html">← 一覧に戻る</a>
-  <h1>No.{{ dive.dive_number }} — {{ dive.date }} {{ dive.time }} — {{ dive.location or "場所不明" }}</h1>
+  <div class="topbar">
+    <a class="back" href="index.html"><i data-lucide="house"></i> ホーム</a>
+    <span class="dive-no">No.{{ dive.dive_number }}</span>
+  </div>
 
   <div class="info-grid">
+    <div class="info-card info-card-full">
+      <div class="info-value"><i data-lucide="map-pin"></i>{{ dive.location or "場所不明" }}</div>
+    </div>
     <div class="info-card info-card-full">
       <div class="info-value"><i data-lucide="calendar-clock"></i>{{ time_range }} (<i data-lucide="timer"></i>{{ dive.duration }})</div>
     </div>
@@ -52,7 +132,7 @@
     {% endif %}
     {% if dive.deco_model %}
     <div class="info-card">
-      <div class="info-value" style="font-size:1.0rem;"><i data-lucide="sliders-horizontal"></i>{{ dive.deco_model }}</div>
+      <div class="info-value" style="font-size:0.95rem;"><i data-lucide="sliders-horizontal"></i>{{ dive.deco_model }}</div>
       <div class="info-label">GF値</div>
     </div>
     {% endif %}
@@ -75,10 +155,8 @@
     const hasPressure  = pressureData.some(v => v !== null);
     const hasTemp      = tempData.some(v => v !== null);
 
-    // 実測点インデックスを記録（フォワードフィル前）
     const tempIsReal = tempData.map(v => v !== null);
 
-    // 水温: 最後の記録値を潜水終了まで延長（計器は変化時のみ記録するため）
     if (hasTemp) {
       let last = null;
       for (let i = 0; i < tempData.length; i++) {
@@ -87,18 +165,21 @@
       }
     }
 
-    // X軸共通設定（5分=300秒単位）
+    const GRID  = "rgba(0,63,135,0.07)";
+    const TICK  = "#5070a0";
+    const BORD  = "rgba(0,63,135,0.15)";
+
     const xScale = {
       type: "linear",
       ticks: {
         stepSize: 300,
         callback: v => `${Math.floor(v / 60)}分`,
+        color: TICK,
       },
-      grid: { color: "rgba(0,0,0,0.07)" },
-      border: { width: 1 },
+      grid:   { color: GRID },
+      border: { color: BORD, width: 1 },
     };
 
-    // デコ天井データ（stopdepth をフォワードフィル、0になったら終了）
     const stopRaw = raw.map(s => 's' in s ? s.s : null);
     const hasDeco = stopRaw.some(v => v !== null && v > 0);
     const stopData = raw.map((s, i) => ({ x: s.t, y: stopRaw[i] }));
@@ -107,7 +188,7 @@
       for (let i = 0; i < stopData.length; i++) {
         const v = stopRaw[i];
         if (v !== null) {
-          last = v === 0 ? null : v;   // stopdepth=0 でデコ終了
+          last = v === 0 ? null : v;
           stopData[i].y = last;
         } else {
           stopData[i].y = last;
@@ -115,7 +196,6 @@
       }
     }
 
-    // 深度変化レート (m/min) を各サンプル点について計算
     const descentRates = raw.map((s, i) => {
       if (i === 0) return 0;
       const dt = (s.t - raw[i - 1].t) / 60;
@@ -123,9 +203,6 @@
       return Math.abs(s.d - raw[i - 1].d) / dt;
     });
 
-    // 黄・赤オーバーレイ用データ（対象でない点は null にして線を切る）
-    // 区間 i-1→i の色は descentRates[i] で決まるため、
-    // 点 i を含む区間が黄/赤になる場合は点 i-1 と i の両方を含める
     function overlayData(threshold) {
       return raw.map((s, i) => {
         const rIn  = descentRates[i];
@@ -136,16 +213,13 @@
       });
     }
 
-    // ── メインチャート（深度 ＋ 残圧） ──
-    // Chart.js v4 は order 昇順ソート後に逆順描画するため、
-    // order が小さいほど最前面になる。青(底面)=30、黄=20、赤=10 の順に設定。
     const mainDatasets = [
       {
         label: "深度 (m)",
         data: raw.map(s => ({ x: s.t, y: s.d })),
-        borderColor: "#0077b6",
+        borderColor: "#0055b3",
         borderWidth: 1.5,
-        backgroundColor: "rgba(0,119,182,0.15)",
+        backgroundColor: "rgba(0,85,179,0.10)",
         fill: true,
         pointRadius: 0,
         tension: 0.3,
@@ -154,7 +228,7 @@
       },
       {
         label: "_yellow",
-        data: overlayData(7),   // 7-10 m/min
+        data: overlayData(7),
         borderColor: "#f0c000",
         borderWidth: 1.5,
         backgroundColor: "transparent",
@@ -167,7 +241,7 @@
       },
       {
         label: "_red",
-        data: overlayData(10),  // 10 m/min以上
+        data: overlayData(10),
         borderColor: "#e03030",
         borderWidth: 1.5,
         backgroundColor: "transparent",
@@ -214,8 +288,10 @@
       yDepth: {
         position: "left",
         reverse: true,
-        title: { display: true, text: "深度 (m)", color: "#0077b6" },
-        ticks: { color: "#0077b6" },
+        title: { display: true, text: "深度 (m)", color: TICK },
+        ticks: { color: TICK },
+        grid:   { color: GRID },
+        border: { color: BORD },
       },
     };
 
@@ -231,7 +307,6 @@
       };
     }
 
-    // 残圧の始点・終点の値をグラフ上に描画するプラグイン
     const pressureEndLabels = {
       id: "pressureEndLabels",
       afterDatasetsDraw(chart) {
@@ -269,7 +344,6 @@
       },
     };
 
-    // 最大深度の点にラベルを描画するプラグイン
     const maxSample = raw.reduce((m, s) => s.d > m.d ? s : m, raw[0]);
     const maxDepthMarker = {
       id: "maxDepthMarker",
@@ -282,7 +356,7 @@
 
         ctx.save();
         ctx.font         = "bold 11px sans-serif";
-        ctx.fillStyle    = "#0077b6";
+        ctx.fillStyle    = "#0055b3";
         ctx.textAlign    = "center";
         ctx.textBaseline = "top";
         ctx.fillText(`${maxSample.d.toFixed(1)}m`, xPx, yPx + 4);
@@ -295,14 +369,13 @@
       data: { datasets: mainDatasets },
       options: {
         scales: mainScales,
-        plugins: { legend: { display: hasDeco, labels: { filter: item => !item.text.startsWith('_') } } },
+        plugins: { legend: { display: hasDeco, labels: { filter: item => !item.text.startsWith('_'), color: TICK } } },
         animation: false,
         aspectRatio: 2.22,
       },
       plugins: [pressureEndLabels, maxDepthMarker],
     });
 
-    // ── 水温チャート（別チャート） ──
     if (hasTemp) {
       document.getElementById("tempSection").style.display = "";
 
@@ -312,9 +385,9 @@
           datasets: [{
             label: "水温 (°C)",
             data: raw.map((s, i) => ({ x: s.t, y: tempData[i] })),
-            borderColor: "#e63946",
+            borderColor: "#e05060",
             borderWidth: 1.5,
-            backgroundColor: "rgba(230,57,70,0.08)",
+            backgroundColor: "rgba(224,80,96,0.1)",
             fill: true,
             pointRadius: tempIsReal.map(r => r ? 2 : 0),
             tension: 0.3,
@@ -326,8 +399,10 @@
             x: { ...xScale, ticks: { ...xScale.ticks, display: false }, title: { display: false } },
             y: {
               position: "left",
-              title: { display: true, text: "水温 (°C)", color: "#e63946" },
-              ticks: { color: "#e63946", stepSize: 1 },
+              title: { display: true, text: "水温 (°C)", color: "#e05060" },
+              ticks: { color: "#e05060", stepSize: 1 },
+              grid:   { color: GRID },
+              border: { color: BORD },
             },
           },
           plugins: { legend: { display: false } },
@@ -336,7 +411,6 @@
         },
       });
 
-      // 両チャートのプロットエリア（左右）を揃えて時間軸を完全一致させる
       const syncAreas = () => {
         const leftMax  = Math.max(mainChart.chartArea.left,  tempChart.chartArea.left);
         const rightMax = Math.max(
@@ -358,7 +432,7 @@
     }
   </script>
   {% else %}
-  <p>深度プロファイルデータなし</p>
+  <p style="color: var(--muted); margin-top: 1rem;">深度プロファイルデータなし</p>
   {% endif %}
   <script>
     lucide.createIcons();
