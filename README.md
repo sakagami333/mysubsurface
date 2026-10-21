@@ -130,3 +130,80 @@ YYYY/MM/00-Trip     — トリップの場所情報
 |---|---|
 | [Jinja2](https://jinja.palletsprojects.com/) | HTML テンプレートエンジン |
 | [Chart.js 4](https://www.chartjs.org/)（CDN） | ダイブプロファイルグラフ |
+| [Lucide](https://lucide.dev/)（CDN） | アイコン |
+
+---
+
+## セットアップ手順（新環境・初回構築）
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/sakagami333/mysubsurface.git
+cd mysubsurface
+pip install -r requirements.txt
+```
+
+### 2. ローカル動作確認
+
+```bash
+SUBSURFACE_EMAIL=you@example.com SUBSURFACE_PASSWORD=yourpassword python3 src/build.py
+python3 -m http.server 8000 --directory public
+# → http://localhost:8000 を開いて確認
+```
+
+### 3. GitHub Secrets の登録
+
+GitHub リポジトリの **Settings → Secrets and variables → Actions** に以下を登録:
+
+| シークレット名 | 内容 |
+|---|---|
+| `SUBSURFACE_EMAIL` | Subsurface Cloud のメールアドレス |
+| `SUBSURFACE_PASSWORD` | Subsurface Cloud のパスワード |
+| `SAKURA_FTP_HOST` | さくらサーバの FTP ホスト名 |
+| `SAKURA_FTP_USER` | FTP ユーザー名 |
+| `SAKURA_FTP_PASSWORD` | FTP パスワード |
+
+### 4. さくらのサーバ側の準備
+
+FTP でログインし、デプロイ先ディレクトリが存在することを確認:
+
+```
+./mysubsurface/   ← このディレクトリが存在すること
+```
+
+存在しない場合はあらかじめ作成しておく。
+
+### 5. GitHub Actions の初回実行
+
+GitHub リポジトリの **Actions タブ → Build and Deploy → Run workflow** で手動実行。  
+ログが全ステップ ✅ になれば完了。
+
+### 6. 公開 URL の確認
+
+さくらのサーバの公開 URL（例: `https://yourname.sakura.ne.jp/mysubsurface/`）で  
+`index.html` が表示されることを確認。
+
+---
+
+## 開発履歴
+
+### 2026-10 セッション（初回実装 → 本格拡張）
+
+| フェーズ | 内容 |
+|---|---|
+| 初期構成 | fetch / parse / generate パイプライン、GitHub Actions、FTP デプロイ |
+| Phase 1 | ローカルビルド初回動作確認（`python3 src/build.py`）|
+| Phase 2 | 深度グラフ拡張（残圧・デコ・水温チャート）、詳細情報カード追加 |
+| Phase 3 | ダイビングNo取得（`Dive-NNN` ファイル名）、URL を No に一致（`dive-1000.html`）|
+| Phase 4 | 潜水開始〜終了時刻カード（全幅・1段目）、潜水時間カード廃止 |
+| Phase 5 | 深度変化レート別3色グラフ（青/黄/赤の重ね描き、Chart.js v4 order 制御）|
+| Phase 6 | 月またぎダイブのパースバグ修正（`MM-DD-DayName` 形式対応）|
+| Phase 7 | 水温グラフ時間軸をメインと同期、グリッド 5 分統一 |
+
+### 既知の仕様・注意事項
+
+- **ダイビングNo のオフセット**: Subsurface Cloud の `Dive-NNN` ファイル名が正として使用。本数が増えても自動追従。
+- **Chart.js v4 の描画順**: `order` 値が**小さいほど最前面**（降順ループで描画）。青=30・黄=20・赤=10 で設定。
+- **Lucide アイコンサイズ**: `createIcons()` が `width="24"` を SVG に埋め込むため、JS で `style.width = '1em'` を後付けして上書き。
+- **水温グラフの軸ずれ**: 右軸（残圧）の有無で左余白が変わるため、`syncAreas()` でレンダリング後に両チャートの `layout.padding` を補正。
