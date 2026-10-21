@@ -25,6 +25,7 @@ class Dive:
     mean_temp_c: float | None = None
     deco_model: str = ""
     o2_percent: float | None = None
+    dive_number: int | None = None
 
 
 def parse_dir(cache_dir: Path) -> list[Dive]:
@@ -60,6 +61,7 @@ def parse_dir(cache_dir: Path) -> list[Dive]:
 
                     dive_kv = _parse_kv_file(dive_file)
                     duration = dive_kv.get("duration", "")
+                    dive_number = int(dive_file.name.split("-")[1]) if "-" in dive_file.name else None
 
                     siteid = dive_kv.get("divesiteid", "")
                     location = divesites.get(siteid, "") or trip_kv.get("location", "")
@@ -75,7 +77,7 @@ def parse_dir(cache_dir: Path) -> list[Dive]:
 
                     dives.append(Dive(
                         date, time, duration, location, max_depth, samples,
-                        mean_depth, mean_temp, deco_model, o2_percent,
+                        mean_depth, mean_temp, deco_model, o2_percent, dive_number,
                     ))
 
     dives.sort(key=lambda d: (d.date, d.time), reverse=True)
@@ -102,8 +104,13 @@ def _parse_dir_datetime(dir_name: str, year: str, month: str) -> tuple[str, str]
     if not m:
         return "", ""
     first, second, h, mi, s = m.groups()
-    day = second if second else first
-    return f"{year}-{month}-{day.zfill(2)}", f"{h}:{mi}:{s}"
+    if second:
+        # MM-DD-DayName 形式: first=月, second=日
+        actual_month, day = first.zfill(2), second
+    else:
+        # DD-DayName 形式: first=日, 月は親ディレクトリのmonthを使用
+        actual_month, day = month, first
+    return f"{year}-{actual_month}-{day.zfill(2)}", f"{h}:{mi}:{s}"
 
 
 def _parse_divecomputer(path: Path) -> tuple[float, float, str, list[Sample]]:

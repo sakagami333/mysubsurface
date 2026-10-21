@@ -41,8 +41,8 @@
     <tbody>
       {% for dive in dives %}
       <tr>
-        <td>{{ total - loop.index0 }}</td>
-        <td><a href="dive-{{ loop.index0 }}.html">{{ dive.date }}</a></td>
+        <td>{{ dive.dive_number or "—" }}</td>
+        <td><a href="dive-{{ dive.dive_number or loop.index0 }}.html">{{ dive.date }}</a></td>
         <td>{{ dive.location or "—" }}</td>
         <td>{{ "%.1f"|format(dive.max_depth_m) }} m</td>
         <td>{{ dive.duration }}</td>
