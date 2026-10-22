@@ -26,8 +26,9 @@ def generate(dives: list) -> None:
 
     # トップページ（ダイブ一覧）
     tmpl = env.get_template("index.html")
+    max_dive_number = max((d.dive_number for d in dives if d.dive_number is not None), default=len(dives))
     (PUBLIC_DIR / "index.html").write_text(
-        tmpl.render(dives=dives, total=len(dives)), encoding="utf-8"
+        tmpl.render(dives=dives, total=max_dive_number), encoding="utf-8"
     )
 
     # 個別ダイブページ

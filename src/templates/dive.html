@@ -8,10 +8,10 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
     :root {
-      --bg:       #eef3fb;
+      --bg:       #f0f4f8;
       --surface:  #ffffff;
-      --surface2: #dce8f7;
-      --border:   #b8d0e8;
+      --surface2: #f5f8fc;
+      --border:   #e0e8f0;
       --accent:   #003f87;
       --text:     #1a2844;
       --muted:    #5070a0;
@@ -21,45 +21,57 @@
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
+      font-size: 0.875rem;
+      min-height: 100vh;
+    }
+    .site-header {
+      background: var(--accent);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,63,135,0.25);
+    }
+    .header-inner {
       max-width: 960px;
       margin: 0 auto;
-      padding: 1rem;
-      font-size: 0.875rem;
-    }
-    .topbar {
+      padding: 0.8rem 1.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 0.65rem;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 0.75rem;
     }
     .back {
-      font-size: 0.78rem;
-      color: var(--muted);
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.85);
       text-decoration: none;
-      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
     }
-    .back:hover { color: var(--accent); }
-    .back svg { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: 0.2em; }
+    .back:hover { color: #fff; }
+    .back svg { width: 1em; height: 1em; }
     .dive-no {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       font-weight: 700;
-      color: var(--accent);
+      color: #fff;
+    }
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.5rem;
     }
     .info-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.4rem;
+      gap: 0.6rem;
       margin-bottom: 0.75rem;
     }
     .info-card {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.4rem 0.75rem;
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
       text-align: center;
-      min-width: 88px;
+      min-width: 96px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,63,135,0.06);
     }
     .info-card-full {
       flex: 1 1 100%;
@@ -79,15 +91,15 @@
     .info-label {
       font-size: 0.67rem;
       color: var(--muted);
-      margin-top: 0.1rem;
+      margin-top: 0.2rem;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
     .chart-wrap {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,63,135,0.06);
     }
     .chart-temp {
       margin-top: 0.45rem;
@@ -98,56 +110,68 @@
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <a class="back" href="index.html"><i data-lucide="house"></i> ホーム</a>
-    <span class="dive-no">No.{{ dive.dive_number }}</span>
-  </div>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="back" href="index.html"><i data-lucide="house"></i> ホーム</a>
+      <span class="dive-no">No.{{ dive.dive_number }}</span>
+    </div>
+  </header>
 
-  <div class="info-grid">
-    <div class="info-card info-card-full">
-      <div class="info-value"><i data-lucide="map-pin"></i>{{ dive.location or "場所不明" }}</div>
+  <main class="main">
+    <div class="info-grid">
+      <div class="info-card info-card-full">
+        <div class="info-value"><i data-lucide="map-pin"></i>{{ dive.location or "場所不明" }}</div>
+      </div>
+      <div class="info-card info-card-full">
+        <div class="info-value"><i data-lucide="calendar-clock"></i>{{ time_range }} (<i data-lucide="timer"></i>{{ dive.duration }})</div>
+      </div>
+      <div class="info-card">
+        <div class="info-value"><i data-lucide="arrow-down-to-line"></i>{{ "%.1f"|format(dive.max_depth_m) }} m</div>
+        <div class="info-label">最大深度</div>
+      </div>
+      <div class="info-card">
+        <div class="info-value"><i data-lucide="arrow-up-down"></i>{{ "%.1f"|format(dive.mean_depth_m) }} m</div>
+        <div class="info-label">平均水深</div>
+      </div>
+      {% if dive.mean_temp_c is not none %}
+      <div class="info-card">
+        <div class="info-value"><i data-lucide="thermometer"></i>{{ "%.1f"|format(dive.mean_temp_c) }} °C</div>
+        <div class="info-label">平均水温</div>
+      </div>
+      {% endif %}
+      {% if dive.o2_percent is not none %}
+      <div class="info-card">
+        <div class="info-value"><i data-lucide="fuel"></i>{% if dive.o2_percent <= 21 %}Air{% else %}EAN{{ "%.0f"|format(dive.o2_percent) }}{% endif %}</div>
+        <div class="info-label">酸素濃度</div>
+      </div>
+      {% endif %}
+      {% if dive.deco_model %}
+      <div class="info-card">
+        <div class="info-value" style="font-size:0.95rem;"><i data-lucide="sliders-horizontal"></i>{{ dive.deco_model }}</div>
+        <div class="info-label">GF値</div>
+      </div>
+      {% endif %}
+      {% if dive.sac_l_min is not none %}
+      <div class="info-card" style="min-width:200px; text-align:left;">
+        <div class="info-value"><i data-lucide="wind"></i>{{ dive.sac_l_min }} L/min</div>
+        <div class="info-label">SAC</div>
+        {% if dive.sac_detail %}
+        <div style="font-size:0.6rem; color:var(--muted); margin-top:0.3rem; line-height:1.4;">{{ dive.sac_detail }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
-    <div class="info-card info-card-full">
-      <div class="info-value"><i data-lucide="calendar-clock"></i>{{ time_range }} (<i data-lucide="timer"></i>{{ dive.duration }})</div>
-    </div>
-    <div class="info-card">
-      <div class="info-value"><i data-lucide="arrow-down-to-line"></i>{{ "%.1f"|format(dive.max_depth_m) }} m</div>
-      <div class="info-label">最大深度</div>
-    </div>
-    <div class="info-card">
-      <div class="info-value"><i data-lucide="arrow-up-down"></i>{{ "%.1f"|format(dive.mean_depth_m) }} m</div>
-      <div class="info-label">平均水深</div>
-    </div>
-    {% if dive.mean_temp_c is not none %}
-    <div class="info-card">
-      <div class="info-value"><i data-lucide="thermometer"></i>{{ "%.1f"|format(dive.mean_temp_c) }} °C</div>
-      <div class="info-label">平均水温</div>
-    </div>
-    {% endif %}
-    {% if dive.o2_percent is not none %}
-    <div class="info-card">
-      <div class="info-value"><i data-lucide="fuel"></i>{% if dive.o2_percent <= 21 %}Air{% else %}EAN{{ "%.0f"|format(dive.o2_percent) }}{% endif %}</div>
-      <div class="info-label">酸素濃度</div>
-    </div>
-    {% endif %}
-    {% if dive.deco_model %}
-    <div class="info-card">
-      <div class="info-value" style="font-size:0.95rem;"><i data-lucide="sliders-horizontal"></i>{{ dive.deco_model }}</div>
-      <div class="info-label">GF値</div>
-    </div>
-    {% endif %}
-  </div>
 
-  {% if dive.samples %}
-  <div class="chart-wrap">
-    <div class="chart-main">
-      <canvas id="depthChart"></canvas>
+    {% if dive.samples %}
+    <div class="chart-wrap">
+      <div class="chart-main">
+        <canvas id="depthChart"></canvas>
+      </div>
+      <div class="chart-temp" id="tempSection" style="display:none">
+        <canvas id="tempChart" height="58"></canvas>
+      </div>
     </div>
-    <div class="chart-temp" id="tempSection" style="display:none">
-      <canvas id="tempChart" height="58"></canvas>
-    </div>
-  </div>
-  <script>
+    <script>
     const raw = {{ samples_json }};
 
     const pressureData = raw.map(s => s.p ?? null);
@@ -430,10 +454,11 @@
       };
       syncAreas();
     }
-  </script>
-  {% else %}
-  <p style="color: var(--muted); margin-top: 1rem;">深度プロファイルデータなし</p>
-  {% endif %}
+    </script>
+    {% else %}
+    <p style="color: var(--muted); margin-top: 1rem;">深度プロファイルデータなし</p>
+    {% endif %}
+  </main>
   <script>
     lucide.createIcons();
     document.querySelectorAll('.info-value svg').forEach(svg => {

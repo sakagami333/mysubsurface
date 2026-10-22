@@ -6,10 +6,10 @@
   <title>My Dive Log</title>
   <style>
     :root {
-      --bg:       #eef3fb;
+      --bg:       #f0f4f8;
       --surface:  #ffffff;
-      --surface2: #dce8f7;
-      --border:   #b8d0e8;
+      --surface2: #f5f8fc;
+      --border:   #e0e8f0;
       --accent:   #003f87;
       --text:     #1a2844;
       --muted:    #5070a0;
@@ -19,62 +19,82 @@
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
+      font-size: 0.875rem;
+      min-height: 100vh;
+    }
+    .site-header {
+      background: var(--accent);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,63,135,0.25);
+    }
+    .header-inner {
       max-width: 960px;
       margin: 0 auto;
-      padding: 1rem;
-      font-size: 0.875rem;
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      align-items: center;
     }
-    header {
-      padding-bottom: 0.65rem;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 0.75rem;
-    }
-    h1 {
-      font-size: 1.15rem;
+    .logo-title {
+      color: #fff;
+      font-size: 1.05rem;
       font-weight: 700;
-      color: var(--accent);
       letter-spacing: -0.01em;
     }
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
     .stats {
-      display: flex;
-      gap: 1px;
-      background: var(--border);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 0.75rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
     }
     .stat-item {
-      flex: 1;
       background: var(--surface);
-      padding: 0.55rem 1rem;
-      text-align: center;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,63,135,0.06);
     }
     .stat-value {
-      font-size: 1.45rem;
+      font-size: 1.6rem;
       font-weight: 700;
       color: var(--accent);
-      letter-spacing: -0.02em;
-      line-height: 1.15;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
     }
     .stat-label {
       font-size: 0.67rem;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 0.1rem;
+      letter-spacing: 0.06em;
+      margin-top: 0.3rem;
+    }
+    .table-card {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,63,135,0.06);
+      overflow: hidden;
+    }
+    .table-card-title {
+      padding: 1rem 1.5rem 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      overflow: hidden;
     }
     thead tr { background: var(--surface2); }
     th {
-      padding: 0.4rem 0.75rem;
-      font-size: 0.71rem;
+      padding: 0.45rem 1.5rem;
+      font-size: 0.7rem;
       font-weight: 600;
       color: var(--muted);
       text-align: left;
@@ -82,7 +102,7 @@
       letter-spacing: 0.05em;
     }
     td {
-      padding: 0.42rem 0.75rem;
+      padding: 0.55rem 1.5rem;
       border-bottom: 1px solid var(--border);
     }
     tr:last-child td { border-bottom: none; }
@@ -94,44 +114,51 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>My Dive Log</h1>
+  <header class="site-header">
+    <div class="header-inner">
+      <span class="logo-title">My Dive Log</span>
+    </div>
   </header>
-  <div class="stats">
-    <div class="stat-item">
-      <div class="stat-value">{{ total }}</div>
-      <div class="stat-label">総本数</div>
+  <main class="main">
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-label">総本数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">{{ "%.0f"|format(dives | map(attribute='max_depth_m') | max) }} m</div>
+        <div class="stat-label">最大深度</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">{{ dives | map(attribute='date') | max }}</div>
+        <div class="stat-label">最終ダイブ</div>
+      </div>
     </div>
-    <div class="stat-item">
-      <div class="stat-value">{{ "%.0f"|format(dives | map(attribute='max_depth_m') | max) }} m</div>
-      <div class="stat-label">最大深度</div>
+    <div class="table-card">
+      <div class="table-card-title">ダイブ一覧</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>日付</th>
+            <th>場所</th>
+            <th>最大深度</th>
+            <th>潜水時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dive in dives %}
+          <tr>
+            <td class="col-num">{{ dive.dive_number or "—" }}</td>
+            <td><a href="dive-{{ dive.dive_number or loop.index0 }}.html">{{ dive.date }}</a></td>
+            <td>{{ dive.location or "—" }}</td>
+            <td class="col-depth">{{ "%.1f"|format(dive.max_depth_m) }} m</td>
+            <td>{{ dive.duration }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    <div class="stat-item">
-      <div class="stat-value">{{ dives | map(attribute='date') | max }}</div>
-      <div class="stat-label">最終ダイブ</div>
-    </div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>日付</th>
-        <th>場所</th>
-        <th>最大深度</th>
-        <th>潜水時間</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for dive in dives %}
-      <tr>
-        <td class="col-num">{{ dive.dive_number or "—" }}</td>
-        <td><a href="dive-{{ dive.dive_number or loop.index0 }}.html">{{ dive.date }}</a></td>
-        <td>{{ dive.location or "—" }}</td>
-        <td class="col-depth">{{ "%.1f"|format(dive.max_depth_m) }} m</td>
-        <td>{{ dive.duration }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  </main>
 </body>
 </html>
