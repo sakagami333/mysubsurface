@@ -33,6 +33,13 @@ jobs:
           SUBSURFACE_PASSWORD: ${{ secrets.SUBSURFACE_PASSWORD }}
         run: python src/build.py
 
+      - name: 取得データを Artifact として保存
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssrf-data
+          path: .ssrf-cache/
+          retention-days: 7
+
       - name: GitHub Pages 用アーティファクトをアップロード
         uses: actions/upload-pages-artifact@v3
         with:
