@@ -2,7 +2,8 @@ name: Build and Deploy
 
 on:
   schedule:
-    - cron: "0 2 * * *"  # 毎日 JST 11:00 にビルド
+    - cron: "0 22 * * *"  # 毎日 JST 07:00 にビルド
+    - cron: "0 10 * * *"  # 毎日 JST 19:00 にビルド
   workflow_dispatch:       # 手動実行も可能
 
 jobs:
