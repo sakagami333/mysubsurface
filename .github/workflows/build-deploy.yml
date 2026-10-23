@@ -8,6 +8,13 @@ on:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,12 +32,11 @@ jobs:
           SUBSURFACE_PASSWORD: ${{ secrets.SUBSURFACE_PASSWORD }}
         run: python src/build.py
 
-      - name: さくらのサーバへ FTP デプロイ
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: GitHub Pages 用アーティファクトをアップロード
+        uses: actions/upload-pages-artifact@v3
         with:
-          server: ${{ secrets.SAKURA_FTP_HOST }}
-          username: ${{ secrets.SAKURA_FTP_USER }}
-          password: ${{ secrets.SAKURA_FTP_PASSWORD }}
-          protocol: ftps-legacy
-          local-dir: public/
-          server-dir: ./mysubsurface/
+          path: public/
+
+      - name: GitHub Pages にデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4
