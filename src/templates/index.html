@@ -107,7 +107,9 @@
     }
     tr:last-child td { border-bottom: none; }
     tbody tr:hover td { background: var(--surface2); }
+    tbody tr[data-href] { cursor: pointer; }
     .col-num   { color: var(--muted); font-size: 0.8rem; }
+    .col-num a { color: var(--muted); }
     .col-depth { font-weight: 600; color: var(--accent); }
     a { color: var(--text); text-decoration: none; }
     a:hover { color: var(--accent); }
@@ -148,10 +150,11 @@
         </thead>
         <tbody>
           {% for dive in dives %}
-          <tr>
-            <td class="col-num">{{ dive.dive_number or "—" }}</td>
-            <td><a href="dive-{{ dive.dive_number or loop.index0 }}.html">{{ dive.date }}</a></td>
-            <td>{{ dive.location or "—" }}</td>
+          {% set href = "dive-%s.html" % (dive.dive_number or loop.index0) %}
+          <tr data-href="{{ href }}">
+            <td class="col-num"><a href="{{ href }}">{{ dive.dive_number or "—" }}</a></td>
+            <td><a href="{{ href }}">{{ dive.date }}</a></td>
+            <td><a href="{{ href }}">{{ dive.location or "—" }}</a></td>
             <td class="col-depth">{{ "%.1f"|format(dive.max_depth_m) }} m</td>
             <td>{{ dive.duration }}</td>
           </tr>
@@ -160,5 +163,14 @@
       </table>
     </div>
   </main>
+  <script>
+    // 行のどこをクリックしても詳細へ移動する（リンク部分はリンク自身の動作に任せる）
+    document.querySelectorAll('tbody tr[data-href]').forEach(tr => {
+      tr.addEventListener('click', e => {
+        if (e.target.closest('a')) return;
+        location.href = tr.dataset.href;
+      });
+    });
+  </script>
 </body>
 </html>
