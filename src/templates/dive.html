@@ -124,6 +124,38 @@
       border-top: 1px solid var(--border);
       height: 72px;
     }
+    /* PC はスクロールなしで1画面に収める。グラフは残りの高さをすべて使う */
+    @media (min-width: 768px) {
+      body {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .header-inner { padding: 0.5rem 1.5rem; }
+      .main {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 0.75rem 1.5rem;
+      }
+      .info-grid { gap: 0.5rem; margin-bottom: 0.5rem; }
+      .info-card { padding: 0.45rem 0.8rem; border-radius: 10px; }
+      .info-card-full { flex: 1 1 calc(50% - 0.25rem); }
+      .chart-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0.75rem 1rem;
+      }
+      .chart-main {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+      }
+    }
   </style>
 </head>
 <body>
@@ -173,12 +205,9 @@
       </div>
       {% endif %}
       {% if dive.sac_l_min is not none %}
-      <div class="info-card" style="min-width:200px; text-align:left;">
+      <div class="info-card">
         <div class="info-value"><i data-lucide="wind"></i>{{ dive.sac_l_min }} L/min</div>
-        <div class="info-label">SAC</div>
-        {% if dive.sac_detail %}
-        <div style="font-size:0.6rem; color:var(--muted); margin-top:0.3rem; line-height:1.4;">{{ dive.sac_detail }}</div>
-        {% endif %}
+        <div class="info-label">SAC{% if dive.sac_detail %} <span style="text-transform:none;">{{ dive.sac_detail }}</span>{% endif %}</div>
       </div>
       {% endif %}
     </div>
@@ -417,6 +446,8 @@
         plugins: { legend: { display: hasDeco, labels: { filter: item => !item.text.startsWith('_'), color: TICK } } },
         animation: false,
         aspectRatio: 2.22,
+        // PC では縦横比を固定せず、CSS で決まる残りの高さに合わせる
+        maintainAspectRatio: !matchMedia("(min-width: 768px)").matches,
       },
       plugins: [pressureEndLabels, maxDepthMarker],
     });

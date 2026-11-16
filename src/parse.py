@@ -229,11 +229,7 @@ def _calc_sac(
         return None, ""
     mean_abs_bar = surface_pressure_bar + mean_depth_m * (salinity_g_l / 10000)
     sac = round((consumed_bar * tank_size_l) / duration_min / mean_abs_bar, 1)
-    detail = (
-        f"{start_bar:.0f}→{end_bar:.0f} bar ({consumed_bar:.0f}bar×{tank_size_l:.0f}L) "
-        f"÷ {duration_min:.1f}min ÷ {mean_abs_bar:.2f}bar"
-        f"（水深{mean_depth_m:.1f}m, 塩分{salinity_g_l:.0f}g/L, 水面圧{surface_pressure_bar:.3f}bar）"
-    )
+    detail = f"{start_bar:.0f}→{end_bar:.0f} bar"
     return sac, detail
 
 
