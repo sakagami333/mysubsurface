@@ -15,6 +15,16 @@ def fetch(email: str, password: str) -> Path:
     if CACHE_DIR.exists():
         subprocess.run(["git", "pull"], cwd=CACHE_DIR, check=True, capture_output=True)
     else:
-        subprocess.run(["git", "clone", url, str(CACHE_DIR)], check=True, capture_output=True)
+        # Subsurface はメールアドレス名のブランチに保存するので、あればそれを取得する
+        heads = subprocess.run(
+            ["git", "ls-remote", "--heads", url], check=True, capture_output=True, text=True
+        ).stdout.split()
+        branch_args = ["-b", email] if f"refs/heads/{email}" in heads else []
+        subprocess.run(["git", "clone", *branch_args, url, str(CACHE_DIR)], check=True, capture_output=True)
+
+    log = subprocess.run(
+        ["git", "log", "-1", "--format=%D / %ci"], cwd=CACHE_DIR, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    print(f"  最新コミット: {log}")
 
     return CACHE_DIR

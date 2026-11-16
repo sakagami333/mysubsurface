@@ -3,6 +3,11 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# ダイブディレクトリ名: [YYYY-][MM-]DD-曜日-hh=mm=ss[~重複回避用hex]
+_DIVE_DIR_RE = re.compile(
+    r"^(?:(\d{4})-)?(?:(\d{2})-)?(\d{2})-[A-Za-z]{3}-(\d{2})[=:](\d{2})[=:](\d{2})(?:~[0-9a-fA-F]+)?$"
+)
+
 
 @dataclass
 class Sample:
@@ -44,47 +49,52 @@ def parse_dir(cache_dir: Path) -> list[Dive]:
                 continue
             month = month_dir.name
 
-            for trip_dir in sorted(month_dir.iterdir()):
-                if not trip_dir.is_dir():
+            # トリップに入っていないダイブは月ディレクトリ直下に置かれる
+            dive_dirs: list[tuple[Path, dict[str, str]]] = []
+            for entry in sorted(month_dir.iterdir()):
+                if not entry.is_dir():
                     continue
-                trip_kv = _parse_kv_file(trip_dir / "00-Trip")
+                if _DIVE_DIR_RE.match(entry.name):
+                    dive_dirs.append((entry, {}))
+                    continue
+                trip_kv = _parse_kv_file(entry / "00-Trip")
+                dive_dirs += [(d, trip_kv) for d in sorted(entry.iterdir()) if d.is_dir()]
 
-                for dive_dir in sorted(trip_dir.iterdir()):
-                    if not dive_dir.is_dir():
-                        continue
-                    dive_file = next(dive_dir.glob("Dive-*"), None)
-                    dc_file = dive_dir / "Divecomputer"
-                    if not dive_file or not dc_file.exists():
-                        continue
+            for dive_dir, trip_kv in dive_dirs:
+                dive_file = next((f for f in sorted(dive_dir.iterdir()) if f.name == "Dive" or f.name.startswith("Dive-")), None)
+                # ダイブコンピュータが複数台だと Divecomputer-001, -002 … になる
+                dc_file = next((f for f in sorted(dive_dir.iterdir()) if f.name.startswith("Divecomputer")), None)
+                if not dive_file or not dc_file:
+                    continue
 
-                    date, time = _parse_dir_datetime(dive_dir.name, year, month)
-                    if not date:
-                        continue
+                date, time = _parse_dir_datetime(dive_dir.name, year, month)
+                if not date:
+                    continue
 
-                    dive_kv = _parse_kv_file(dive_file)
-                    duration = dive_kv.get("duration", "")
-                    dive_number = int(dive_file.name.split("-")[1]) if "-" in dive_file.name else None
+                dive_kv = _parse_kv_file(dive_file)
+                duration = dive_kv.get("duration", "")
+                dive_number = int(dive_file.name.split("-")[1]) if "-" in dive_file.name else None
 
-                    siteid = dive_kv.get("divesiteid", "")
-                    location = divesites.get(siteid, "") or trip_kv.get("location", "")
+                siteid = dive_kv.get("divesiteid", "")
+                location = divesites.get(siteid, "") or trip_kv.get("location", "")
 
-                    max_depth, mean_depth, deco_model, samples, surface_pressure, salinity = _parse_divecomputer(dc_file)
+                max_depth, mean_depth, deco_model, samples, surface_pressure, salinity = _parse_divecomputer(dc_file)
 
-                    temps = [s.temp_c for s in samples if s.temp_c is not None]
-                    mean_temp = round(sum(temps) / len(temps), 1) if temps else None
+                temps = [s.temp_c for s in samples if s.temp_c is not None]
+                mean_temp = round(sum(temps) / len(temps), 1) if temps else None
 
-                    cylinder = dive_kv.get("cylinder", "")
-                    o2_match = re.search(r"o2=(\d+\.?\d*)%", cylinder)
-                    o2_percent = float(o2_match.group(1)) if o2_match else None
+                cylinder = dive_kv.get("cylinder", "")
+                o2_match = re.search(r"o2=(\d+\.?\d*)%", cylinder)
+                o2_percent = float(o2_match.group(1)) if o2_match else None
 
-                    size_match = re.search(r"vol=(\d+\.?\d*)l", cylinder)
-                    tank_size_l = float(size_match.group(1)) if size_match else None
-                    sac, sac_detail = _calc_sac(samples, tank_size_l, duration, mean_depth, surface_pressure, salinity)
+                size_match = re.search(r"vol=(\d+\.?\d*)l", cylinder)
+                tank_size_l = float(size_match.group(1)) if size_match else None
+                sac, sac_detail = _calc_sac(samples, tank_size_l, duration, mean_depth, surface_pressure, salinity)
 
-                    dives.append(Dive(
-                        date, time, duration, location, max_depth, samples,
-                        mean_depth, mean_temp, deco_model, o2_percent, dive_number, sac, sac_detail,
-                    ))
+                dives.append(Dive(
+                    date, time, duration, location, max_depth, samples,
+                    mean_depth, mean_temp, deco_model, o2_percent, dive_number, sac, sac_detail,
+                ))
 
     dives.sort(key=lambda d: (d.date, d.time), reverse=True)
     return dives
@@ -105,18 +115,13 @@ def _parse_kv_file(path: Path) -> dict[str, str]:
 
 
 def _parse_dir_datetime(dir_name: str, year: str, month: str) -> tuple[str, str]:
-    """'12-Sat-13=45=33' または '07-24-Fri-08=43=56' から (date, time) を返す"""
-    m = re.match(r"^(\d+)-(?:(\d+)-)?[A-Za-z]+-(\d{2})=(\d{2})=(\d{2})$", dir_name)
+    """'12-Sat-13=45=33' / '07-24-Fri-08=43=56' / '2025-12-31-Wed-08=43=56~1a2b3c4' から (date, time) を返す"""
+    m = _DIVE_DIR_RE.match(dir_name)
     if not m:
         return "", ""
-    first, second, h, mi, s = m.groups()
-    if second:
-        # MM-DD-DayName 形式: first=月, second=日
-        actual_month, day = first.zfill(2), second
-    else:
-        # DD-DayName 形式: first=日, 月は親ディレクトリのmonthを使用
-        actual_month, day = month, first
-    return f"{year}-{actual_month}-{day.zfill(2)}", f"{h}:{mi}:{s}"
+    y, mo, day, h, mi, s = m.groups()
+    # 年・月は親ディレクトリと異なるときだけ名前に付く（トリップが月や年をまたぐ場合）
+    return f"{y or year}-{mo or month}-{day}", f"{h}:{mi}:{s}"
 
 
 def _parse_divecomputer(path: Path) -> tuple[float, float, str, list[Sample], float, float]:
