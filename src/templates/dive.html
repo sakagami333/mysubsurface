@@ -54,6 +54,23 @@
       font-weight: 700;
       color: #fff;
     }
+    .dive-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-link {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      padding: 0.25rem 0.3rem;
+      white-space: nowrap;
+    }
+    .nav-link:hover { color: #fff; }
+    .nav-link svg { width: 1.1em; height: 1.1em; }
+    .nav-link.disabled { visibility: hidden; }
     .main {
       max-width: 960px;
       margin: 0 auto;
@@ -113,7 +130,11 @@
   <header class="site-header">
     <div class="header-inner">
       <a class="back" href="index.html"><i data-lucide="house"></i> ホーム</a>
-      <span class="dive-no">No.{{ dive.dive_number }}</span>
+      <nav class="dive-nav">
+        {% if older %}<a class="nav-link" id="olderLink" href="{{ older.href }}" title="ひとつ古いダイブ"><i data-lucide="chevron-left"></i>{{ older.label }}</a>{% else %}<span class="nav-link disabled"><i data-lucide="chevron-left"></i></span>{% endif %}
+        <span class="dive-no">No.{{ dive.dive_number }}</span>
+        {% if newer %}<a class="nav-link" id="newerLink" href="{{ newer.href }}" title="ひとつ新しいダイブ">{{ newer.label }}<i data-lucide="chevron-right"></i></a>{% else %}<span class="nav-link disabled"><i data-lucide="chevron-right"></i></span>{% endif %}
+      </nav>
     </div>
   </header>
 
@@ -466,6 +487,32 @@
       svg.style.height = '1em';
       svg.style.verticalAlign = '-0.15em';
       svg.style.marginRight = '2px';
+    });
+
+    // 前後のダイブへ移動: スマホは横スワイプ（左で新しい方）、PC は ← → キー
+    const olderLink = document.getElementById('olderLink');
+    const newerLink = document.getElementById('newerLink');
+    const go = link => { if (link) location.href = link.href; };
+
+    let touchX = null, touchY = null;
+    document.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { touchX = null; return; }
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      const dy = e.changedTouches[0].clientY - touchY;
+      touchX = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      go(dx < 0 ? newerLink : olderLink);
+    }, { passive: true });
+
+    document.addEventListener('keydown', e => {
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === 'ArrowLeft') go(olderLink);
+      else if (e.key === 'ArrowRight') go(newerLink);
     });
   </script>
 </body>

@@ -33,7 +33,12 @@ def generate(dives: list) -> None:
 
     # 個別ダイブページ
     detail_tmpl = env.get_template("dive.html")
+    # dives は新しい順。前後リンク用に各ダイブのファイル名と表示名を先に決めておく
+    pages = [f"dive-{d.dive_number}.html" if d.dive_number else f"dive-{i}.html" for i, d in enumerate(dives)]
+    labels = [f"No.{d.dive_number}" if d.dive_number else d.date for d in dives]
     for i, dive in enumerate(dives):
+        newer = {"href": pages[i - 1], "label": labels[i - 1]} if i > 0 else None
+        older = {"href": pages[i + 1], "label": labels[i + 1]} if i + 1 < len(dives) else None
         def _s(s):
             d: dict = {"t": s.time_sec, "d": s.depth_m}
             if s.temp_c is not None:
@@ -45,6 +50,7 @@ def generate(dives: list) -> None:
             return d
         samples_json = json.dumps([_s(s) for s in dive.samples])
         time_range = _calc_time_range(dive.date, dive.time, dive.duration)
-        html = detail_tmpl.render(dive=dive, samples_json=samples_json, dive_id=i, time_range=time_range)
-        filename = f"dive-{dive.dive_number}.html" if dive.dive_number else f"dive-{i}.html"
-        (PUBLIC_DIR / filename).write_text(html, encoding="utf-8")
+        html = detail_tmpl.render(
+            dive=dive, samples_json=samples_json, dive_id=i, time_range=time_range, newer=newer, older=older
+        )
+        (PUBLIC_DIR / pages[i]).write_text(html, encoding="utf-8")
