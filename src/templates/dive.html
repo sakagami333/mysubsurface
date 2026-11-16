@@ -142,7 +142,6 @@
       }
       .info-grid { gap: 0.5rem; margin-bottom: 0.5rem; }
       .info-card { padding: 0.45rem 0.8rem; border-radius: 10px; }
-      .info-card-full { flex: 1 1 calc(50% - 0.25rem); }
       .chart-wrap {
         flex: 1;
         min-height: 0;
@@ -174,9 +173,7 @@
     <div class="info-grid">
       <div class="info-card info-card-full">
         <div class="info-value"><i data-lucide="map-pin"></i>{{ dive.location or "場所不明" }}</div>
-      </div>
-      <div class="info-card info-card-full">
-        <div class="info-value"><i data-lucide="calendar-clock"></i>{{ time_range }} (<i data-lucide="timer"></i>{{ dive.duration }})</div>
+        <div class="info-value" style="margin-top:0.25rem;"><i data-lucide="calendar-clock"></i>{{ time_range }} ({{ dive.duration }})</div>
       </div>
       <div class="info-card">
         <div class="info-value"><i data-lucide="arrow-down-to-line"></i>{{ "%.1f"|format(dive.max_depth_m) }} m</div>
