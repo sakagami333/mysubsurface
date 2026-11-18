@@ -325,12 +325,130 @@
       },
     ];
 
+    // 残圧線の色は Subsurface と同じく、その時点の瞬間 SAC とダイブ平均 SAC の差で決める
+    // （core/gaspressures.cpp の補間、core/profile.cpp の fill_sac()/sac_between()、
+    //   core/divelist.cpp の calculate_sac()、core/color.cpp の getSacColor()）
+    const GAS = {{ {
+      "vol_l": dive.tank_size_l,
+      "o2": dive.o2_percent,
+      "he": dive.he_percent,
+      "start_bar": dive.cylinder_start_bar,
+      "end_bar": dive.cylinder_end_bar,
+      "duration": dive.duration,
+      "mean_depth_m": dive.mean_depth_m,
+      "surface_bar": dive.surface_pressure_bar,
+      "salinity_g_l": dive.salinity_g_l
+    }|tojson }};
+    const SAC_COLORS = [
+      "rgb(0,102,51)", "rgb(51,153,51)", "rgb(102,204,51)", "rgb(153,204,51)", "rgb(204,204,51)",
+      "rgb(204,153,51)", "rgb(204,102,51)", "rgb(230,77,51)", "rgb(255,51,51)",
+    ];
+    const SAC_UNKNOWN_COLOR = "rgba(128,128,128,0.25)";
+    const SURFACE_THRESHOLD_MM = 750;
+
+    // 水深(mm) → 絶対圧(mbar)。塩分は g/10L 単位（海水 10300）で計算する
+    const depthToMbar = mm => Math.round(GAS.surface_bar * 1000 + mm * GAS.salinity_g_l * 10 * 0.981 / 100000);
+    // 圧力(mbar) のタンクに入っているガスの水面換算量(mL)。圧縮係数 Z で補正する（core/gas-model.cpp）
+    function gasVolumeMl(mbar) {
+      const bar = Math.min(Math.max(mbar / 1000, 0), 500);
+      const o2 = GAS.o2 ? Math.round(GAS.o2 * 10) : 209;
+      const he = GAS.he ? Math.round(GAS.he * 10) : 0;
+      const virial = (c, x) => x * c[0] + x * x * c[1] + x * x * x * c[2];
+      const z = (virial([-7.18092073703e-04, 2.81852572808e-06, -1.50290620492e-09], bar) * o2 +
+                 virial([4.87320026468e-04, -8.83632921053e-08, 5.33304543646e-11], bar) * he +
+                 virial([-2.19260353292e-04, 2.92844845532e-06, -2.07613482075e-09], bar) * (1000 - o2 - he)) * 0.001 + 1;
+      return Math.trunc(GAS.vol_l * 1000 * (bar / 1.01325) / z);
+    }
+
+    // 記録のない時点の残圧は、前後の記録の間を「水深で重み付けした経過時間」に比例して補間する
+    const depthMm = raw.map(s => s.d * 1000);
+    const pressureTime = raw.map((s, i) => {
+      if (i === 0) return 0;
+      const avg = (depthMm[i - 1] + depthMm[i]) / 2;
+      return avg <= SURFACE_THRESHOLD_MM ? 0 : depthToMbar(avg) * (s.t - raw[i - 1].t);
+    });
+    const pressureMbar = raw.map(s => s.p != null ? Math.round(s.p * 1000) : 0);
+    {
+      const known = pressureMbar.map((p, i) => p ? i : -1).filter(i => i >= 0);
+      for (let k = 1; k < known.length; k++) {
+        const a = known[k - 1], b = known[k];
+        let total = 0;
+        for (let j = a + 1; j <= b; j++) total += pressureTime[j];
+        let acc = 0;
+        for (let j = a + 1; j < b; j++) {
+          acc += pressureTime[j];
+          pressureMbar[j] = total
+            ? Math.round(pressureMbar[a] + (pressureMbar[b] - pressureMbar[a]) * acc / total)
+            : pressureMbar[a];
+        }
+      }
+    }
+
+    // ダイブ平均 SAC (mL/分)。開始・終了圧はシリンダーの記録、なければ最初と最後の残圧
+    function diveSac() {
+      const known = pressureMbar.filter(p => p);
+      const start = GAS.start_bar ? GAS.start_bar * 1000 : known[0];
+      const end = GAS.end_bar ? GAS.end_bar * 1000 : known[known.length - 1];
+      const m = /^(\d+):(\d+)/.exec(GAS.duration || "");
+      const duration = m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+      if (!start || !end || start <= end || !duration || !GAS.mean_depth_m) return 0;
+      const airuse = (gasVolumeMl(start) - gasVolumeMl(end)) / 1000;
+      const atm = depthToMbar(GAS.mean_depth_m * 1000) / 1013.25;
+      return Math.round(airuse / atm * 60 / duration * 1000);
+    }
+
+    // 2点間の SAC (mL/分)
+    function sacBetween(first, last) {
+      if (first === last) return 0;
+      const airuse = gasVolumeMl(pressureMbar[first]) - gasVolumeMl(pressureMbar[last]);
+      if (airuse <= 0) return 0;
+      let atmSeconds = 0;
+      for (let i = first; i < last; i++) {
+        atmSeconds += depthToMbar((depthMm[i] + depthMm[i + 1]) / 2) / 1013.25 * (raw[i + 1].t - raw[i].t);
+      }
+      return Math.round(airuse / (atmSeconds / 60));
+    }
+
+    // 各時点の瞬間 SAC：30秒前から1分間の区間で計算する
+    const atSurface = i => depthMm[i] < SURFACE_THRESHOLD_MM;
+    const hasP = i => i >= 0 && i < raw.length && pressureMbar[i] > 0;
+    const momentarySac = raw.map((s, i) => {
+      if (!hasP(i)) return 0;
+      let idx = i, first = i;
+      while (idx > 0) {
+        if (atSurface(idx - 1) && atSurface(idx)) break;
+        if (raw[idx - 1].t < s.t - 30) break;
+        if (!hasP(idx - 1)) break;
+        idx--;
+        first = idx;
+      }
+      let last = first;
+      const until = raw[first].t + 60;
+      while (++idx < raw.length) {
+        if (last + 1 >= raw.length) break;
+        if (atSurface(last) && atSurface(last + 1)) break;
+        if (raw[last + 1].t > until) break;
+        if (!hasP(idx + 1)) break;
+        last = idx;
+      }
+      return sacBetween(first, last);
+    });
+
+    const avgSac = diveSac();
+    function sacColor(sac) {
+      if (!sac || !avgSac || !GAS.vol_l) return SAC_UNKNOWN_COLOR;
+      const idx = Math.trunc((sac - avgSac + 7000) / 2000);
+      return SAC_COLORS[Math.min(Math.max(idx, 0), SAC_COLORS.length - 1)];
+    }
+
     if (hasPressure) {
       mainDatasets.push({
         label: "残圧 (bar)",
-        data: raw.map((s, i) => ({ x: s.t, y: pressureData[i] })),
+        data: raw.map((s, i) => ({ x: s.t, y: pressureMbar[i] ? pressureMbar[i] / 1000 : null })),
         borderColor: "#e07b00",
-        borderWidth: 1,
+        // Subsurface と同じく、前の点からその点までの線をその点の SAC の色で塗る
+        segment: { borderColor: ctx => sacColor(momentarySac[ctx.p1DataIndex]) },
+        borderWidth: 2,
         backgroundColor: "transparent",
         pointRadius: 0,
         tension: 0.2,

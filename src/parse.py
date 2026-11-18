@@ -33,6 +33,13 @@ class Dive:
     dive_number: int | None = None
     sac_l_min: float | None = None
     sac_detail: str = ""
+    # 残圧グラフの瞬間 SAC 色分け（Subsurface 互換）に使う値
+    tank_size_l: float | None = None
+    he_percent: float | None = None
+    cylinder_start_bar: float | None = None
+    cylinder_end_bar: float | None = None
+    surface_pressure_bar: float = 1.013
+    salinity_g_l: float = 1025.0
 
 
 def parse_dir(cache_dir: Path) -> list[Dive]:
@@ -91,9 +98,19 @@ def parse_dir(cache_dir: Path) -> list[Dive]:
                 tank_size_l = float(size_match.group(1)) if size_match else None
                 sac, sac_detail = _calc_sac(samples, tank_size_l, duration, mean_depth, surface_pressure, salinity)
 
+                he_match = re.search(r"he=(\d+\.?\d*)%", cylinder)
+                start_match = re.search(r"start=(\d+\.?\d*)bar", cylinder)
+                end_match = re.search(r"end=(\d+\.?\d*)bar", cylinder)
+
                 dives.append(Dive(
                     date, time, duration, location, max_depth, samples,
                     mean_depth, mean_temp, deco_model, o2_percent, dive_number, sac, sac_detail,
+                    tank_size_l=tank_size_l,
+                    he_percent=float(he_match.group(1)) if he_match else None,
+                    cylinder_start_bar=float(start_match.group(1)) if start_match else None,
+                    cylinder_end_bar=float(end_match.group(1)) if end_match else None,
+                    surface_pressure_bar=surface_pressure,
+                    salinity_g_l=salinity,
                 ))
 
     dives.sort(key=lambda d: (d.date, d.time), reverse=True)
