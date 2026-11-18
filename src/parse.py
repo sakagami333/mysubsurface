@@ -96,19 +96,26 @@ def parse_dir(cache_dir: Path) -> list[Dive]:
 
                 size_match = re.search(r"vol=(\d+\.?\d*)l", cylinder)
                 tank_size_l = float(size_match.group(1)) if size_match else None
-                sac, sac_detail = _calc_sac(samples, tank_size_l, duration, mean_depth, surface_pressure, salinity)
 
                 he_match = re.search(r"he=(\d+\.?\d*)%", cylinder)
+                he_percent = float(he_match.group(1)) if he_match else None
                 start_match = re.search(r"start=(\d+\.?\d*)bar", cylinder)
+                cylinder_start = float(start_match.group(1)) if start_match else None
                 end_match = re.search(r"end=(\d+\.?\d*)bar", cylinder)
+                cylinder_end = float(end_match.group(1)) if end_match else None
+
+                sac, sac_detail = _calc_sac(
+                    samples, tank_size_l, duration, mean_depth, surface_pressure, salinity,
+                    o2_percent, he_percent, cylinder_start, cylinder_end,
+                )
 
                 dives.append(Dive(
                     date, time, duration, location, max_depth, samples,
                     mean_depth, mean_temp, deco_model, o2_percent, dive_number, sac, sac_detail,
                     tank_size_l=tank_size_l,
-                    he_percent=float(he_match.group(1)) if he_match else None,
-                    cylinder_start_bar=float(start_match.group(1)) if start_match else None,
-                    cylinder_end_bar=float(end_match.group(1)) if end_match else None,
+                    he_percent=he_percent,
+                    cylinder_start_bar=cylinder_start,
+                    cylinder_end_bar=cylinder_end,
                     surface_pressure_bar=surface_pressure,
                     salinity_g_l=salinity,
                 ))
@@ -216,6 +223,20 @@ def _parse_divecomputer(path: Path) -> tuple[float, float, str, list[Sample], fl
     return max_depth, mean_depth_declared, deco_model, samples, surface_pressure, salinity
 
 
+def _gas_compressibility(bar: float, o2_percent: float | None, he_percent: float | None) -> float:
+    """ガスの圧縮係数 Z（Subsurface core/gas-model.cpp と同じ式）"""
+    def virial_m1(c: tuple[float, float, float], x: float) -> float:
+        return x * c[0] + x * x * c[1] + x * x * x * c[2]
+
+    bar = min(max(bar, 0.0), 500.0)
+    o2 = round(o2_percent * 10) if o2_percent else 209
+    he = round(he_percent * 10) if he_percent else 0
+    z = (virial_m1((-7.18092073703e-04, 2.81852572808e-06, -1.50290620492e-09), bar) * o2
+         + virial_m1((4.87320026468e-04, -8.83632921053e-08, 5.33304543646e-11), bar) * he
+         + virial_m1((-2.19260353292e-04, 2.92844845532e-06, -2.07613482075e-09), bar) * (1000 - o2 - he))
+    return z * 0.001 + 1.0
+
+
 def _calc_sac(
     samples: list[Sample],
     tank_size_l: float | None,
@@ -223,29 +244,36 @@ def _calc_sac(
     mean_depth_m: float,
     surface_pressure_bar: float = 1.013,
     salinity_g_l: float = 1025.0,
+    o2_percent: float | None = None,
+    he_percent: float | None = None,
+    cylinder_start_bar: float | None = None,
+    cylinder_end_bar: float | None = None,
 ) -> tuple[float | None, str]:
-    """SAC (L/min) = 消費気体量(L) / 潜水時間(min) / 平均絶対圧力(bar)
-    平均絶対圧力 = surface_pressure + meandepth × (salinity/10000)
+    """SAC (L/min) を Subsurface（core/divelist.cpp の calculate_sac()）と同じ式で求める
+    SAC = 消費ガス量(水面換算L、圧縮係数で補正) / 平均水深の絶対圧(atm) / 潜水時間(min)
+    開始・終了圧はシリンダーの記録、なければ最初と最後の残圧サンプル
     Returns (sac_l_min, detail_str)"""
     if tank_size_l is None or tank_size_l <= 0:
         return None, ""
     pressures = [s.pressure_bar for s in samples if s.pressure_bar is not None]
-    if len(pressures) < 2:
-        return None, ""
-    start_bar = pressures[0]
-    end_bar = pressures[-1]
-    consumed_bar = start_bar - end_bar
-    if consumed_bar <= 0:
+    start_bar = cylinder_start_bar or (pressures[0] if pressures else None)
+    end_bar = cylinder_end_bar or (pressures[-1] if pressures else None)
+    if not start_bar or not end_bar or start_bar <= end_bar:
         return None, ""
     try:
         parts = duration_str.split()[0].split(":")
-        duration_min = int(parts[0]) + int(parts[1]) / 60
+        duration_sec = int(parts[0]) * 60 + int(parts[1])
     except (ValueError, IndexError):
         return None, ""
-    if duration_min <= 0:
+    if duration_sec <= 0 or mean_depth_m <= 0:
         return None, ""
-    mean_abs_bar = surface_pressure_bar + mean_depth_m * (salinity_g_l / 10000)
-    sac = round((consumed_bar * tank_size_l) / duration_min / mean_abs_bar, 1)
+
+    def gas_volume_ml(bar: float) -> int:
+        return int(tank_size_l * 1000 * (bar / 1.01325) / _gas_compressibility(bar, o2_percent, he_percent))
+
+    airuse_l = (gas_volume_ml(start_bar) - gas_volume_ml(end_bar)) / 1000
+    mean_mbar = round(surface_pressure_bar * 1000 + mean_depth_m * 1000 * salinity_g_l * 10 * 0.981 / 100000)
+    sac = round(airuse_l / (mean_mbar / 1013.25) * 60 / duration_sec, 1)
     detail = f"{start_bar:.0f}→{end_bar:.0f} bar"
     return sac, detail
 
