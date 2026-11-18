@@ -267,61 +267,61 @@
       }
     }
 
-    const descentRates = raw.map((s, i) => {
-      if (i === 0) return 0;
-      const dt = (s.t - raw[i - 1].t) / 60;
-      if (dt <= 0) return 0;
-      return Math.abs(s.d - raw[i - 1].d) / dt;
-    });
-
-    function overlayData(threshold) {
-      return raw.map((s, i) => {
-        const rIn  = descentRates[i];
-        const rOut = i + 1 < raw.length ? descentRates[i + 1] : 0;
-        return (rIn >= threshold || rOut >= threshold)
-          ? { x: s.t, y: s.d }
-          : { x: s.t, y: null };
-      });
+    // 深度線の色は Subsurface と同じ判定・配色にする
+    // （core/profile.cpp の velocity() と analyze_plot_info()、core/color.cpp の VELO_*）
+    // 安定・ゆっくり・やや速い・速い・危険
+    const VELO_COLORS = ["rgb(0,102,0)", "rgb(102,204,0)", "rgb(204,204,0)", "rgb(204,128,0)", "rgb(255,0,0)"];
+    const FAST = 3;
+    // speed は mm/秒。正が潜行、負が浮上（浮上の方がしきい値が厳しい）
+    function velocityLevel(speed) {
+      if (speed < -304) return 4;
+      if (speed < -152) return 3;
+      if (speed < -76)  return 2;
+      if (speed < -25)  return 1;
+      if (speed < 25)   return 0;
+      if (speed < 152)  return 1;
+      if (speed < 304)  return 2;
+      if (speed < 507)  return 3;
+      return 4;
     }
+    const speedBetween = (a, b) => Math.trunc((raw[b].d - raw[a].d) * 1000 / (raw[b].t - raw[a].t));
+    const velocity = raw.map((s, i) => {
+      if (i === 0 || s.t === raw[i - 1].t) return 0;
+      let v = velocityLevel(speedBetween(i - 1, i));
+      // サンプル間隔が短く速くない区間は、15秒以上前のサンプルとの差で判定し直す
+      if (s.t - raw[i - 1].t < 15 && v < FAST) {
+        let past = i - 2;
+        while (past > 0 && s.t - raw[past].t < 15) past--;
+        if (past >= 0) v = velocityLevel(speedBetween(past, i));
+      }
+      return v;
+    });
 
     const mainDatasets = [
       {
         label: "深度 (m)",
         data: raw.map(s => ({ x: s.t, y: s.d })),
-        borderColor: "#0055b3",
-        borderWidth: 1.5,
+        borderColor: VELO_COLORS[0],
+        // Subsurface と同じく、各点から次の点への線をその点の速度の色で塗る
+        segment: { borderColor: ctx => VELO_COLORS[velocity[ctx.p0DataIndex]] },
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.3,
+        yAxisID: "yDepth",
+        order: 20,
+      },
+      {
+        // 塗りつぶしは線と分ける（区間ごとに色を変えると塗りに縦筋が出るため）
+        label: "_fill",
+        data: raw.map(s => ({ x: s.t, y: s.d })),
+        borderWidth: 0,
         backgroundColor: "rgba(0,85,179,0.10)",
         fill: true,
         pointRadius: 0,
         tension: 0.3,
         yAxisID: "yDepth",
         order: 30,
-      },
-      {
-        label: "_yellow",
-        data: overlayData(7),
-        borderColor: "#f0c000",
-        borderWidth: 1.5,
-        backgroundColor: "transparent",
-        fill: false,
-        pointRadius: 0,
-        tension: 0.3,
-        yAxisID: "yDepth",
-        spanGaps: false,
-        order: 20,
-      },
-      {
-        label: "_red",
-        data: overlayData(10),
-        borderColor: "#e03030",
-        borderWidth: 1.5,
-        backgroundColor: "transparent",
-        fill: false,
-        pointRadius: 0,
-        tension: 0.3,
-        yAxisID: "yDepth",
-        spanGaps: false,
-        order: 10,
       },
     ];
 
